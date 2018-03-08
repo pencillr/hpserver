@@ -1,33 +1,35 @@
 import asyncore
 
 from logger import Logger
+from signal_validator import SignalValidator
 
 class EchoServer(asyncore.dispatcher):
     """Receives connections and establishes handlers for each client.
     """
 
-    def __init__(self, address):
-        self.logger = Logger()
+    def __init__(self, address, logger, sig):
+        self.logger = logger
+        self.sig = sig
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bind(address)
         self.address = self.socket.getsockname()
         self.logger.debug('binding to %s', self.address)
         self.listen(5)
-        print("Listening on: ", host, port)
+        print("Listening on: ", self.address)
         return
 
     def handle_accept(self):
         # Called when a client connects to our socket
         client_info = self.accept()
         self.logger.debug('handle_accept() -> %s', client_info[1])
-        EchoHandler(sock=client_info[0])
+        EchoHandler(sock=client_info[0], logger=self.logger, sig=self.sig)
         # We only want to deal with one client at a time,
         # so close as soon as we set up the handler.
         # Normally you would not do this and the server
         # would run forever or until it received instructions
         # to stop.
-        self.handle_close()
+        #self.handle_close()
         return
 
     def handle_close(self):
@@ -39,11 +41,13 @@ class EchoHandler(asyncore.dispatcher):
     """Handles echoing messages from a single client.
     """
 
-    def __init__(self, sock, chunk_size=256):
+    def __init__(self, sock, logger, sig, chunk_size=256):
         self.chunk_size = chunk_size
-        self.logger = logging.getLogger('EchoHandler%s' % str(sock.getsockname()))
+        self.logger = logger
+        self.sig = sig
         asyncore.dispatcher.__init__(self, sock=sock)
         self.data_to_write = []
+        print "handlerinit"
         return
 
     def writable(self):
@@ -67,7 +71,11 @@ class EchoHandler(asyncore.dispatcher):
         """Read an incoming message from the client and put it into our outgoing queue."""
         data = self.recv(self.chunk_size)
         self.logger.debug('handle_read() -> (%d) "%s"', len(data), data)
-        self.data_to_write.insert(0, data)
+        #self.data_to_write.insert(0, data)
+        data.decode("utf-8")
+        message = str(data)
+        print("Message: ", message)
+        self.sig.collect_signals(message)
 
     def handle_close(self):
         self.logger.debug('handle_close()')
@@ -78,12 +86,12 @@ class EchoClient(asyncore.dispatcher):
     """Sends messages to the server and receives responses.
     """
 
-    def __init__(self, host, port, message, chunk_size=512):
+    def __init__(self, host, port, message, logger, chunk_size=512):
         self.message = message
         self.to_send = message
         self.received_data = []
         self.chunk_size = chunk_size
-        self.logger = logging.getLogger('EchoClient')
+        self.logger = logger
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.logger.debug('connecting to %s', (host, port))
@@ -123,12 +131,12 @@ class EchoClient(asyncore.dispatcher):
 if __name__ == '__main__':
     import socket
 
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(name)s: %(message)s',
-                        )
+    logger = Logger()
+    log = logger.get_logger()
+    sig = SignalValidator(logger)
 
-    address = ('localhost', 0) # let the kernel give us a port
-    server = EchoServer(address)
+    address = ('192.168.1.27', 5000) # let the kernel give us a port
+    server = EchoServer(address, log, sig)
     ip, port = server.address # find out what port we were given
 
     #client = EchoClient(ip, port, message=open('lorem.txt', 'r').read())

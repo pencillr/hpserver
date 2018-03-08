@@ -18,6 +18,9 @@ class Logger:
         log_postfix = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(3))
         return '/tmp/gamelog/log.' + time_postfix + "." + log_postfix
 
+    def get_logger(self):
+        return self.log
+
 
 
 
