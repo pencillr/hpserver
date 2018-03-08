@@ -16,7 +16,7 @@ class Logger:
         ts = time.time()
         time_postfix = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d-%H%M%S')
         log_postfix = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(3))
-        return 'log.' + time_postfix + "." + log_postfix
+        return '/tmp/gamelog/log.' + time_postfix + "." + log_postfix
 
 
 

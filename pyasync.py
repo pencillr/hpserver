@@ -1,7 +1,7 @@
 import asyncore
 import socket
 
-from SignalValidator import SignalValidator
+from signal_validator import SignalValidator
 from logger import Logger
 
 
@@ -15,8 +15,8 @@ class EchoHandler(asyncore.dispatcher_with_send):
             print("Message: ", message)
             sig.collect_signals(message)
             if str(data) == "close":
-                print("disconnected")
-                self.close()
+                raise asyncore.ExitNow('Disconnecting')
+
 
 class EchoServer(asyncore.dispatcher):
 
