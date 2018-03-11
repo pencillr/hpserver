@@ -1,7 +1,13 @@
 import asyncore
+import random
+import string
+import socket
+import os
+import sys
 
 from logger import Logger
 from signal_validator import SignalValidator
+import db_manager
 
 class EchoServer(asyncore.dispatcher):
     """Receives connections and establishes handlers for each client.
@@ -11,13 +17,22 @@ class EchoServer(asyncore.dispatcher):
         self.logger = logger
         self.sig = sig
         asyncore.dispatcher.__init__(self)
+        self.database = ''
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bind(address)
         self.address = self.socket.getsockname()
         self.logger.debug('binding to %s', self.address)
         self.listen(5)
+        self._set_db()
         print("Listening on: ", self.address)
         return
+
+    def _set_db(self):
+        self.logger.info('Creating Database: %s', self.database)
+        dbname_prefix = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(3))
+        dbname_postfix = '_test.db'
+        self.database = dbname_prefix + dbname_postfix
+        db_manager.init_db(self.database)
 
     def handle_accept(self):
         # Called when a client connects to our socket
@@ -47,7 +62,7 @@ class EchoHandler(asyncore.dispatcher):
         self.sig = sig
         asyncore.dispatcher.__init__(self, sock=sock)
         self.data_to_write = []
-        print "handlerinit"
+        self.sig.set_responder(self)
         return
 
     def writable(self):
@@ -68,14 +83,15 @@ class EchoHandler(asyncore.dispatcher):
             self.handle_close()
 
     def handle_read(self):
-        """Read an incoming message from the client and put it into our outgoing queue."""
         data = self.recv(self.chunk_size)
-        self.logger.debug('handle_read() -> (%d) "%s"', len(data), data)
-        #self.data_to_write.insert(0, data)
-        data.decode("utf-8")
-        message = str(data)
-        print("Message: ", message)
-        self.sig.collect_signals(message)
+        if data:
+            self.logger.debug('handle_read() -> (%d) "%s"', len(data), data)
+            #self.data_to_write.insert(0, data)
+            data.decode("utf-8")
+            message = str(data)
+            print("Message: ", message)
+            self.sig.examine_signals(message)
+            self.data_to_write.insert(0, message)
 
     def handle_close(self):
         self.logger.debug('handle_close()')
@@ -129,16 +145,23 @@ class EchoClient(asyncore.dispatcher):
 
 
 if __name__ == '__main__':
-    import socket
+    try:
+        logger = Logger()
+        log = logger.get_logger()
+        sig = SignalValidator(logger)
 
-    logger = Logger()
-    log = logger.get_logger()
-    sig = SignalValidator(logger)
+        address = ('192.168.1.27', 5000) # let the kernel give us a port
+        server = EchoServer(address, log, sig)
+        ip, port = server.address # find out what port we were given
 
-    address = ('192.168.1.27', 5000) # let the kernel give us a port
-    server = EchoServer(address, log, sig)
-    ip, port = server.address # find out what port we were given
+        #client = EchoClient(ip, port, message, log)
 
-    #client = EchoClient(ip, port, message=open('lorem.txt', 'r').read())
-
-    asyncore.loop()
+        asyncore.loop()
+    except KeyboardInterrupt:
+        print '    Interrupted'
+        db_manager.close_all()
+        try:
+            sys.exit(0)
+            db_manager.close_all()
+        except SystemExit:
+            os._exit(0)
