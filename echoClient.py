@@ -91,7 +91,7 @@ class EchoHandler(asyncore.dispatcher):
             message = str(data)
             print("Message: ", message)
             self.sig.examine_signals(message)
-            self.data_to_write.insert(0, message)
+            #self.data_to_write.insert(0, message)
 
     def handle_close(self):
         self.logger.debug('handle_close()')
@@ -142,6 +142,7 @@ class EchoClient(asyncore.dispatcher):
         data = self.recv(self.chunk_size)
         self.logger.debug('handle_read() -> (%d) "%s"', len(data), data)
         self.received_data.append(data)
+        print(data)
 
 
 if __name__ == '__main__':
@@ -150,7 +151,7 @@ if __name__ == '__main__':
         log = logger.get_logger()
         sig = SignalValidator(logger)
 
-        address = ('192.168.1.27', 5000) # let the kernel give us a port
+        address = ('localhost', 5000) # let the kernel give us a port
         server = EchoServer(address, log, sig)
         ip, port = server.address # find out what port we were given
 

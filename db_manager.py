@@ -65,6 +65,7 @@ def fetch_cast(id):
     return row[0]
 
 def register_wiz(id, name, health=20, l=0, s=0, a=0,):
+    # handle if returns registered user!
     c = Writer.cursor()
     t = (id, name, health, l, s, a)
     c.execute("INSERT INTO WIZ VALUES (?,?,?,?,?,?);", t)
