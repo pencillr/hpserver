@@ -49,13 +49,22 @@ class SignalValidator:
         base = signal
         wand_id, spell =  base.split('_')
         id = int(wand_id)
-        ts = time.time()
-        time_base = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d%H%M%S')
-        timeframe =int(time_base)
-        self.set_most_recent_spell(id, spell, timeframe)
-        db_manager.store_cast(wand_id, spell, timeframe)
-        self.logger.log.info("Spell: %s stored with ID: %d", spell, id)
-        self.responder.data_to_write.insert(0, "Stored")
+        if self.validate_cast(id, spell):
+            ts = time.time()
+            time_base = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d%H%M%S')
+            timeframe =int(time_base)
+            self.set_most_recent_spell(id, spell, timeframe)
+            db_manager.store_cast(wand_id, spell, timeframe)
+            self.logger.log.info("Spell: %s stored with ID: %d", spell, id)
+            self.responder.data_to_write.insert(0, "Stored")
+        else:
+            self.responder.data_to_write.insert(0, "Spell not Owned")
+
+    def validate_cast(self, wand_id, spell):
+        if db_manager.auth_cast(wand_id, spell) == 0:
+            return False
+        else:
+            return True
 
 
     def fetch_effect(self, wand_id):

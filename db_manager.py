@@ -48,6 +48,13 @@ def fetch_cast(id, time=0):
         row = c.fetchone()
         print row[0]
 
+def auth_cast(id, spell):
+    c = Reader.cursor()
+    query_string = "SELECT %s FROM WIZ where ID=%d;" % (spell, id)
+    c.execute(query_string)
+    row = c.fetchone()
+    return row[0]
+
 def modify_health(mod):
     pass
 
